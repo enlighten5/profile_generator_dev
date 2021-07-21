@@ -53,6 +53,13 @@ class AddressSpace(linux.AMD64PagedMemory):
             #self.find_kallsyms_address()
             self.kaslr_shift_vtop = self.kaslr_vtop_shift('kallsyms_on_each_symbol')
             self.kaslr_shift_vtov, self.dtb_paddr = self.kaslr_vtov_shift()
+            print("vtop shift {0} vtov shift {1} dtb_paddr {2}".format(hex(self.kaslr_shift_vtop), hex(self.kaslr_shift_vtov), hex(self.dtb_paddr)))
+            
+    def find_page_table(self, dtb):
+        offset = dtb & 0xfff
+        for step in range(offset, self.mem.size(), 4096):
+            if self.maybe_vtop(self.dtb_vaddr, step)==step:
+                print("found dtb")
     def log(self, message):
         print('%s\t%s' %(strftime("%Y-%m-%d %H:%M:%S", gmtime()), message))
         sys.stdout.flush()
@@ -637,7 +644,7 @@ class AddressSpace(linux.AMD64PagedMemory):
             for index in range(0, 4096, 8):
                 if target_string in page[index:index+len(target_string)].decode('utf-8', errors='ignore'):
                     print("Found {0} at {1}".format(target_string, hex(step+index)))
-                    return
+                    return step+index
         print("Cannot found {0}".format(target_string))
     def find_task_struct(self, addr):
         '''
@@ -811,9 +818,10 @@ def main():
     mem_path = sys.argv[1]
     addr_space = AddressSpace(mem_path)
     print("dtb paddr", hex(addr_space.dtb_paddr))
-    addr_space.find_string_paddr('kthreadd')
-    addr_space.find_task_struct(0x1bda7458-3000)
-    addr_space.find_modules()
+    #addr_space.find_string_paddr('kthreadd')
+    print(addr_space.vtop(0xffffffffa7013740+addr_space.kaslr_shift_vtov))
+    #addr_space.find_task_struct(addr_space.find_string_paddr('kthreadd')-3000)
+    #addr_space.find_modules()
 
 
 if __name__ == "__main__":
