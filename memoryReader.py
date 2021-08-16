@@ -43,8 +43,8 @@ class AddressSpace(linux.AMD64PagedMemory):
             # the same symbol recovered from the kernel symbol table is not shifted
             # substracting one from another, we can get the virtual kaslr shift 
             # it's possible that SYMBOL(swapper_pg_dir) cannot be found from the memory snapshot
-            vdtb_idx = self.mem.find(b'SYMBOL(swapper_pg_dir)=f') + len("SYMBOL(swapper_pg_dir)=f")
-            if vdtb_idx-len("SYMBOL(swapper_pg_dir)=f")>0:
+            vdtb_idx = self.mem.find(b'SYMBOL(swapper_pg_dir)=') + len("SYMBOL(swapper_pg_dir)=")
+            if vdtb_idx-len("SYMBOL(swapper_pg_dir)=")>0:
                 self.dtb_vaddr = '0x' + self.mem_read(vdtb_idx, 16)
                 print("dtb_vaddr", self.dtb_vaddr)
             else:
@@ -630,6 +630,7 @@ class AddressSpace(linux.AMD64PagedMemory):
                             #if dtb_paddr is unknown, calculate it here (dtb_symbol_vaddr - kaslr_vtop_shift)
                             return int(self.dtb_vaddr, 16) - dtb_symbol_vaddr, dtb_symbol_vaddr - self.kaslr_shift_vtop
                         else:
+                            print("dtb_vaddr: {0} dtb_symbol_vaddr: {1}".format(hex(int(self.dtb_vaddr, 16)), hex(dtb_symbol_vaddr)))
                             return int(self.dtb_vaddr, 16) - dtb_symbol_vaddr, self.dtb_paddr
                     else:
                         print("Cannot find dtb_vaddr, exit")
@@ -816,8 +817,8 @@ class AddressSpace(linux.AMD64PagedMemory):
 
 def main():
     mem_path = sys.argv[1]
-    addr_space = AddressSpace(mem_path)
-    print("dtb paddr", hex(addr_space.dtb_paddr))
+    addr_space = AddressSpace(mem_path, 0x50a0a000)
+    print("dtb paddr", hex(addr_space.dtb_paddr), addr_space.dtb_vaddr)
     #addr_space.find_string_paddr('kthreadd')
     print(addr_space.vtop(0xffffffffa7013740+addr_space.kaslr_shift_vtov))
     #addr_space.find_task_struct(addr_space.find_string_paddr('kthreadd')-3000)

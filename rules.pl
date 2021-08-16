@@ -1,6 +1,6 @@
 /*
 This file contains part of logic rules used by LogicMem
-In the following code, tuples represent the address and value of a field.
+In the following code, tuples represent the address and value of~ a field.
 for example, in [MM_addr, MM_addr_val], the MM_addr is a candidate address of the mm field, and MM_val 
 is the value of that field. 
 
