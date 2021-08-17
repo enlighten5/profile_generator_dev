@@ -814,6 +814,82 @@ class AddressSpace(linux.AMD64PagedMemory):
             if paddr == modules & 0xffffffffff000:
                 print("found vaddr", hex(vaddr), hex(vaddr + (modules & 0xfff)))
                 self.log("Finish searching")
+    
+    def extract_facts(self, paddr, size = 4096, verbose = 0):
+        valid_pointer = []
+        valid_long = []
+        valid_int = []
+        valid_string = []
+        unknown_pointer = []
+        content = self.read_memory(paddr, size)
+        if not content:
+            print("No avaliable page")
+            return -1
+        value = struct.unpack('<512Q', content)
+        for index in range(len(value)):
+            number = value[index]
+            phys_addr = self.vtop(number)
+            if phys_addr:
+                valid_pointer.append([index*8, phys_addr])
+                if verbose:
+                    print("[-] ", index*8, hex(paddr+index*8), "pointer", hex(number), hex(self.vtop(number)), [c for c in content[index*8:index*8+8]])
+            else:
+                if number < 0xffff:
+                    if number == 0x0:
+                        valid_pointer.append([index*8, number])
+                        if verbose:
+                            print("[-] ", index*8, hex(paddr+index*8), "pointer", number, [c for c in content[index*8:index*8+8]])
+                    else:
+                        str_content = content[index*8:(index+1)*8].decode('utf-8', errors='ignore')
+                        if all(ord(c)>=36 and ord(c)<=122 or ord(c)==0 for c in str_content):
+                            if len(str_content.replace('\x00', '')) >= 1:
+                                valid_string.append([index*8, str_content.replace('\x00', '')])
+                                if verbose:
+                                    print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number))
+                        else:
+                            valid_long.append([index*8, number])
+                            if verbose:
+                                print("[-] ", index*8, hex(paddr+index*8), "value", number, [c for c in content[index*8:index*8+8]])
+                elif number < 0xffffffffffff:
+                    str_content = content[index*8:(index+1)*8].decode('utf-8', errors='ignore')
+                    if all(ord(c)>=36 and ord(c)<=122 or ord(c)==0 for c in str_content):
+                        if len(str_content.replace('\x00', '')) >= 1:
+                            valid_string.append([index*8, str_content.replace('\x00', '')])
+                            if verbose:
+                                print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number))
+                    else:
+                        valid_long.append([index*8, number])
+                        if verbose:
+                            print("[-] ", index*8, hex(paddr+index*8), "value", number, [c for c in content[index*8:index*8+8]])                    
+                elif number == 0xffffffffffffffff:
+                    pass
+                else:
+                    str_content = content[index*8:(index+1)*8].decode('utf-8', errors='ignore')
+                    count = 0
+                    for c in str_content:
+                        if ord(c)>=32 and ord(c)<=122:
+                            count += 1
+                    if count >= 4:
+                        valid_string.append([index*8, str_content.replace('\x00', '')])
+                        if verbose:
+                            print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number))
+                    else:
+                        unknown_pointer.append([index*8, number])
+                        if verbose:
+                            print("[-] ", index*8, hex(paddr+index*8), "unknow pointer: ", hex(number), [c for c in content[index*8:index*8+8]], str_content)
+        # find integers
+        value = struct.unpack('<1024I', content)
+        for index in range(len(value)):
+            number = value[index]
+            if number < 0x17fff:
+                valid_int.append([index*4, number])
+        facts = {}
+        facts['pointers'] = valid_pointer
+        facts['longs'] = valid_long
+        facts['integers'] = valid_int
+        facts['strings'] = valid_string
+
+        return facts
 
 def main():
     mem_path = sys.argv[1]
@@ -823,6 +899,7 @@ def main():
     print(addr_space.vtop(0xffffffffa7013740+addr_space.kaslr_shift_vtov))
     #addr_space.find_task_struct(addr_space.find_string_paddr('kthreadd')-3000)
     #addr_space.find_modules()
+    addr_space.extract_facts(1352742720, 4096, 1)
 
 
 if __name__ == "__main__":
