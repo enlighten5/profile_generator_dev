@@ -825,7 +825,7 @@ class AddressSpace(linux.AMD64PagedMemory):
         if not content:
             print("No avaliable page")
             return -1
-        value = struct.unpack('<512Q', content)
+        value = struct.unpack('<%dQ' % (size/8), content)
         for index in range(len(value)):
             number = value[index]
             phys_addr = self.vtop(number)
@@ -845,22 +845,22 @@ class AddressSpace(linux.AMD64PagedMemory):
                             if len(str_content.replace('\x00', '')) >= 1:
                                 valid_string.append([index*8, str_content.replace('\x00', '')])
                                 if verbose:
-                                    print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number))
+                                    print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number), [c for c in content[index*8:index*8+8]])
                         else:
                             valid_long.append([index*8, number])
                             if verbose:
-                                print("[-] ", index*8, hex(paddr+index*8), "value", number, [c for c in content[index*8:index*8+8]])
+                                print("[-] ", index*8, hex(paddr+index*8), "long", hex(number), [c for c in content[index*8:index*8+8]])
                 elif number < 0xffffffffffff:
                     str_content = content[index*8:(index+1)*8].decode('utf-8', errors='ignore')
                     if all(ord(c)>=36 and ord(c)<=122 or ord(c)==0 for c in str_content):
                         if len(str_content.replace('\x00', '')) >= 1:
                             valid_string.append([index*8, str_content.replace('\x00', '')])
                             if verbose:
-                                print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number))
+                                print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number), [c for c in content[index*8:index*8+8]])
                     else:
                         valid_long.append([index*8, number])
                         if verbose:
-                            print("[-] ", index*8, hex(paddr+index*8), "value", number, [c for c in content[index*8:index*8+8]])                    
+                            print("[-] ", index*8, hex(paddr+index*8), "long", hex(number), [c for c in content[index*8:index*8+8]])                    
                 elif number == 0xffffffffffffffff:
                     pass
                 else:
@@ -872,23 +872,24 @@ class AddressSpace(linux.AMD64PagedMemory):
                     if count >= 4:
                         valid_string.append([index*8, str_content.replace('\x00', '')])
                         if verbose:
-                            print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number))
+                            print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number), [c for c in content[index*8:index*8+8]])
                     else:
                         unknown_pointer.append([index*8, number])
                         if verbose:
                             print("[-] ", index*8, hex(paddr+index*8), "unknow pointer: ", hex(number), [c for c in content[index*8:index*8+8]], str_content)
         # find integers
-        value = struct.unpack('<1024I', content)
+        value = struct.unpack('<%dI' % (size/4), content)
         for index in range(len(value)):
             number = value[index]
             if number < 0x17fff:
                 valid_int.append([index*4, number])
+                if verbose:
+                    print("[-]", index*4, hex(number))
         facts = {}
         facts['pointers'] = valid_pointer
         facts['longs'] = valid_long
         facts['integers'] = valid_int
         facts['strings'] = valid_string
-
         return facts
 
 def main():
