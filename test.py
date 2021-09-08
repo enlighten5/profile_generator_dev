@@ -1,4 +1,4 @@
-from os import fwalk, truncate
+import os
 from constraint import *
 import memoryReader as mr
 import sys
@@ -32,6 +32,7 @@ integer_field = [
 class Query(mr.AddressSpace):
     def __init__(self, mem_path, dtb, verbose):
         super().__init__(mem_path, dtb=dtb, verbose=verbose)
+        self.results = {}
     
     def order_constraint(self, *args):
         for index in range(len(args)-1):
@@ -55,37 +56,121 @@ class Query(mr.AddressSpace):
         problem.addConstraint(lambda a, b=0: a[1] != b, ('mnt_root',))
         problem.addConstraint(lambda a, b=0: a[1] != b, ('mnt_sb',))
         problem.addConstraint(FunctionConstraint(self.dentry), ('mnt_root',))
+        problem.addConstraint(lambda a, b=0: a[1] > b, ('mnt_flags',))
 
         solutions = problem.getSolutions()
         for item in solutions:
-            print(item)
+            for key in item.keys():
+                if key not in self.results.keys():
+                    self.results[key] = [item[key]]
+                elif item[key] not in self.results[key]:
+                    self.results[key].append(item[key])
         if len(solutions) > 0:
             return True
         else:
             return False
 
+    def parent_struct(self, parent, name, name_ptr):
+        '''
+        check if there is a string at the same offset of the name field. 
+        if yes, consider the target object as a parent of the same type.
+        for `dentry`, we utilize the fact that there is one string and one string pointer.
+        '''
+        facts = self.extract_facts(parent[1]+name[0], 16, 0)
+        if len(facts['strings']) == 0:
+            return False
+        facts = self.extract_facts(parent[1]+name_ptr[0], 8, 0)
+        if len(facts['pointers']) == 0:
+            return False
+        if self.string_pointer(facts['pointers'][0]):
+            return True
+        else:
+            return False
+
+    def string_pointer(self, target):
+        '''
+        check whether the pointer refers to a string.
+        '''
+        facts = self.extract_facts(target[1], 8, 0)
+        if not facts:
+            return False
+        if len(facts['strings']) == 0:
+            return False
+        else:
+            return True
+
     def dentry(self, dentry):
+        '''
+        TODO: d_op
+        '''
         problem = Problem()
-        facts = self.extract_facts(dentry[1])
+        facts = self.extract_facts(dentry[1], 256, 0)
         if len(facts['pointers']) == 0 or len(facts['strings']) == 0:
             return False
-        pointers = ['d_parent', 'd_inode', 'd_name', 'd_op', 'd_child', 'd_subdirs']
+        pointers = ['d_parent', 'd_inode', 'd_name', 'd_child_next', 'd_child_prev', 
+                    'd_subdirs_next', 'd_subdirs_prev']
+        # d_iname can be up to 40 bytes
         strings = ['d_iname']
         problem.addVariables(pointers, facts['pointers'])
         problem.addVariables(strings, facts['strings'])
+        problem.addConstraint(FunctionConstraint(self.order_constraint), 
+                                                    ('d_parent', 'd_name', 'd_inode', 'd_iname', 'd_child_next', 
+                                                    'd_child_prev', 'd_subdirs_next', 'd_subdirs_prev'))
+        problem.addConstraint(FunctionConstraint(self.parent_struct), ('d_parent', 'd_iname', 'd_name'))
+        # dentry name contains `/`
+        problem.addConstraint(lambda a, b='/': b in a[1], ('d_iname',))
+        # d_name is the offset of the name field in qstr structure. 
+        problem.addConstraint(FunctionConstraint(self.string_pointer), ('d_name',))
+        problem.addConstraint(FunctionConstraint(self.inode), ('d_inode',))
+        problem.addConstraint(lambda a, b=0: a[1] != b, ('d_inode',))
+        problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('d_name', 'd_inode'))
+        problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('d_child_next', 'd_child_prev'))
+        problem.addConstraint(FunctionConstraint(self.list_head), ('d_child_next', 'd_child_prev', 'd_iname'))
+        problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('d_inode', 'd_iname'))
+        problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('d_child_prev', 'd_subdirs_next'))
+        problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('d_subdirs_next', 'd_subdirs_prev'))
+        problem.addConstraint(FunctionConstraint(self.list_head), ('d_subdirs_next', 'd_subdirs_prev', 'd_iname'))
+
+        solutions = problem.getSolutions()
+        for item in solutions:
+            for key in item.keys():
+                if key not in self.results.keys():
+                    self.results[key] = [item[key]]
+                elif item[key] not in self.results[key]:
+                    self.results[key].append(item[key])
+        if len(solutions) > 0:
+            return True
+        else:
+            return False
 
     def inode(self, f_inode):
         return True
 
     def file_operations(self, f_op):
-        return True
+        problem = Problem()
+        facts = self.extract_facts(f_op[1], 1024, 0)
+        if not facts or len(facts['pointers']) == 0:
+            return False
+        pointers = ['owner']
+        problem.addVariables(pointers, facts['pointers'])
+        problem.addConstraint(lambda a, b=0: a[0] == b, ('owner',))
+        problem.addConstraint(lambda a, b=0: a[1] != b, ('owner',))
+        #problem.addConstraint(FunctionConstraint(self.module), ('owner',))
+        
+        solutions = problem.getSolutions()
 
-    def file(self, file):
+        if len(solutions) > 0:
+            return True
+        else:
+            return False
+
+    def file_struct(self, vm_file):
         '''
         vm_file in vm_area_struct could be NULL
+        TODO: f_op
         '''
         problem = Problem()
-        facts = self.extract_facts(file[1], 256, 0)
+        facts = self.extract_facts(vm_file[1], 256, 0)
         if len(facts['pointers']) == 0:
             return False
         # f_inode was added after v3.8
@@ -94,10 +179,16 @@ class Query(mr.AddressSpace):
         problem.addConstraint(FunctionConstraint(self.order_constraint), 
                                                 ('f_path_mnt', 'f_path_dentry', 'f_inode', 'f_op'))
         problem.addConstraint(FunctionConstraint(self.vfsmount), ('f_path_mnt',))
+        problem.addConstraint(FunctionConstraint(self.dentry), ('f_path_dentry',))
+        #problem.addConstraint(FunctionConstraint(self.file_operations), ('f_op',))
 
         solutions = problem.getSolutions()
         for item in solutions:
-            print(item)
+            for key in item.keys():
+                if key not in self.results.keys():
+                    self.results[key] = [item[key]]
+                elif item[key] not in self.results[key]:
+                    self.results[key].append(item[key])
         if len(solutions) > 0:
             return True
         else:
@@ -133,16 +224,19 @@ class Query(mr.AddressSpace):
         problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('vm_page_prot', 'vm_flags'))
         problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('vm_pgoff', 'vm_file'))
         # vm_file can be NULL
-        problem.addConstraint(FunctionConstraint(self.file), ('vm_file',))
+        problem.addConstraint(FunctionConstraint(self.file_struct), ('vm_file',))
 
         solutions = problem.getSolutions()
         for item in solutions:
-            print(item)
+            for key in item.keys():
+                if key not in self.results.keys():
+                    self.results[key] = [item[key]]
+                elif item[key] not in self.results[key]:
+                    self.results[key].append(item[key])
         if len(solutions) > 0:
             return True
         else:
             return False
-
 
     def mm_test(self, mm):
         problem = Problem()
@@ -189,7 +283,11 @@ class Query(mr.AddressSpace):
                                         ('env_end', ))
         solutions = problem.getSolutions()
         for item in solutions:
-            print(item)
+            for key in item.keys():
+                if key not in self.results.keys():
+                    self.results[key] = [item[key]]
+                elif item[key] not in self.results[key]:
+                    self.results[key].append(item[key])
         if len(solutions) > 0:
             return True
         else:
@@ -197,7 +295,7 @@ class Query(mr.AddressSpace):
 
     def mm_struct(self, mm):
         problem = Problem()
-        facts = self.extract_facts(mm[1])
+        facts = self.extract_facts(mm[1], 1024, 0)
         if len(facts['pointers']) == 0 or len(facts['longs']) == 0:
             return False
         pointers = ['mmap', 'pgd']
@@ -209,8 +307,8 @@ class Query(mr.AddressSpace):
                                             'arg_start', 'arg_end', 'env_start', 'env_end'))
         problem.addConstraint(lambda a, b=0: a[0] == b,
                                         ('mmap',))
-        problem.addConstraint(FunctionConstraint(self.vm_area_struct), 
-                                        ('mmap',))
+        #problem.addConstraint(FunctionConstraint(self.vm_area_struct), 
+        #                                ('mmap',))
         problem.addConstraint(lambda a, b=0x7f0000000000: a[1] > b,
                                         ('mmap_base',))
         problem.addConstraint(lambda a, b=0x7ffffffff000: a[1] == b,
@@ -241,15 +339,19 @@ class Query(mr.AddressSpace):
         solutions = problem.getSolutions()
 
         for item in solutions:
-            print(item)
+            for key in item.keys():
+                if key not in self.results.keys():
+                    self.results[key] = [item[key]]
+                elif item[key] not in self.results[key]:
+                    self.results[key].append(item[key])
         if len(solutions) > 0:
             return True
         else:
             return False
 
     def list_head(self, task_next, task_prev, comm):
-        if comm[0] < task_next[0]:
-            return False
+        #if comm[0] < task_next[0]:
+        #    return False
         next_comm_addr = task_next[1] - task_next[0] + comm[0]
         prev_comm_addr = task_prev[1] - task_next[0] + comm[0]
         facts1 = self.extract_facts(next_comm_addr, 16, 0)
@@ -308,7 +410,11 @@ class Query(mr.AddressSpace):
         
         solutions = problem.getSolutions()
         for item in solutions:
-            print(item)
+            for key in item.keys():
+                if key not in self.results.keys():
+                    self.results[key] = [item[key]]
+                elif item[key] not in self.results[key]:
+                    self.results[key].append(item[key])
         if len(solutions) > 0:
             return True
         else:
@@ -335,6 +441,12 @@ class Query(mr.AddressSpace):
 
 
         solutions = problem.getSolutions()
+        for item in solutions:
+            for key in item.keys():
+                if key not in self.results.keys():
+                    self.results[key] = [item[key]]
+                elif item[key] not in self.results[key]:
+                    self.results[key].append(item[key])
         if len(solutions) > 0:
             return True
         else:
@@ -363,7 +475,11 @@ class Query(mr.AddressSpace):
 
         solutions = problem.getSolutions()
         for item in solutions:
-            print(item)
+            for key in item.keys():
+                if key not in self.results.keys():
+                    self.results[key] = [item[key]]
+                elif item[key] not in self.results[key]:
+                    self.results[key].append(item[key])
         if len(solutions) > 0:
             return True
         else:
@@ -381,7 +497,7 @@ class Query(mr.AddressSpace):
         Recursive evaluate more processes (if not all) in the process list, which tolerants the changes of live memory
         """
         problem = Problem(BacktrackingSolver())
-        facts = self.extract_facts(base_addr)
+        facts = self.extract_facts(base_addr, 4096, 0)
         
         pointers = ['mm', 'active_mm', 'tasks_next', 'tasks_prev', 'parent', 'real_parent', 
                     'child', 'group_leader', 'real_cred', 'cred', 'files']
@@ -451,43 +567,110 @@ class Query(mr.AddressSpace):
                                         ('pid', 'tgid'))
         problem.addConstraint(lambda a, b=0: a[1] != b, ('files',))
         problem.addConstraint(FunctionConstraint(self.files_struct), ('files', ))
-        
-        '''        
-        problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('real_cred', 'cred'))
-        problem.addConstraint(lambda a, b=2400: a[0] < b, ('cred',))
-        '''
-        #problem.addConstraint(lambda a, b: b[0] > a[0], ('cred', 'comm'))
 
         solutions = problem.getSolutions()
         for item in solutions:
+            for key in item.keys():
+                if key not in self.results.keys():
+                    self.results[key] = [item[key]]
+                elif item[key] not in self.results[key]:
+                    self.results[key].append(item[key])
             print(item)
+        for key in self.results.keys():
+            print(key, self.results[key])
 
-    def test(self, base_addr):
+    def kparam_string(self, kparam_str):
+        facts = self.extract_facts(kparam_str[1], 16, 0)
+        if len(facts['pointers']) > 1:
+            if self.string_pointer(facts['pointers'][1]):
+                return True
+        elif len(facts['pointers']) == 1:
+            if self.string_pointer(facts['pointers'][0]):
+                return True
+        return False
+
+    def kernel_param(self, kp):
+        facts = self.extract_facts(kp[1], 128, 0)
+        if len(facts['pointers']) == 0:
+            return False
         problem = Problem()
-        facts = self.extract_facts(base_addr)
-        pointers = ['tasks_next', 'tasks_prev', 'parent']
+        pointers = ['name', 'mod', 'ops', 'str', 'arr']
         problem.addVariables(pointers, facts['pointers'])
-        strings = ['comm']
-        problem.addVariables(strings, facts['strings'])
-        problem.addConstraint(lambda a, b=0: a[1] != b, 
-                                        ('tasks_next',))
-        problem.addConstraint(lambda a, b=0: a[1] != b, 
-                                        ('tasks_prev',))
-        problem.addConstraint(lambda a, b: b[0] == a[0] + 8,
-                                        ('tasks_next', 'tasks_prev'))
-        problem.addConstraint(FunctionConstraint(self.list_head), 
-                                        ('tasks_next', 'tasks_prev', 'comm'))
-        problem.addConstraint(lambda a, b=2: len(a[1]) > b, 
-                                        ('comm', ))
-        problem.addConstraint(lambda a, b: b[0] > a[0], ('tasks_next', 'comm'))
-        problem.addConstraint(lambda a, b=2184: a[0]==b, ('parent',))
-        problem.addConstraint(FunctionConstraint(self.parent_task), ('parent', 'comm'))
-        #problem.addConstraint(lambda a, b=1904: a[0] == b, ('tasks',))
-        #problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('tasks', 'tasks_prev'))
+        problem.addConstraint(FunctionConstraint(self.order_constraint), ('name', 'mod', 'ops', 'str', 'arr'))
+        problem.addConstraint(lambda a, b=0: a[0] == b, ('name',))
+        problem.addConstraint(FunctionConstraint(self.string_pointer), ('name',))
+        problem.addConstraint(lambda a, b=0: a[1] != b, ('mod',))
+        problem.addConstraint(lambda a, b=0: a[1] != b, ('ops',))
+        problem.addConstraint(lambda a, b: b[0] == a[0] + 16, ('name', 'ops'))
+
+        problem.addConstraint(FunctionConstraint(self.kparam_string), ('str',))
+        problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('str', 'arr'))
+        problem.addConstraint(lambda a, b=0: a[1] != b, ('arr',))
+
         solutions = problem.getSolutions()
         for item in solutions:
             print(item)
+        if len(solutions) > 0:
+            return True
+        else:
+            return False
 
+    def kobject(self, target):
+        '''
+        TODO: add more fields
+        '''
+        problem = Problem()
+        facts = self.extract_facts(target[1], 128, 0)
+        if not facts or len(facts['pointers']) == 0:
+            return False
+        pointers = ['name']
+        problem.addVariables(pointers, facts['pointers'])
+        problem.addConstraint(lambda a, b=0: a[0] == b, ('name',))
+        problem.addConstraint(FunctionConstraint(self.string_pointer), ('name',))
+        solutions = problem.getSolutions()
+        if len(solutions) > 0:
+            return True
+        else:
+            return False
+
+    def module(self, base_addr):
+        '''
+        TODO: add constraints for linux before v4.5
+        '''
+        problem = Problem()
+        facts = self.extract_facts(base_addr[1], 1024, 0)
+        if not facts:
+            return False
+        if len(facts['pointers']) == 0 or len(facts['strings']) == 0:
+            return False
+
+        pointers = ['list_next', 'list_prev', 'srcversion', 'holders_dir']
+        strings = ['name']
+        #integers = ['core_layout_size', 'core_layout_text_size', 'core_layout_ro_size', 'core_layout_ro_after_init_size',
+        #            'init_layout_size', 'init_layout_text_size', 'init_layout_ro_size', 'init_layout_ro_after_init_size']
+        
+        problem.addVariables(pointers, facts['pointers'])
+        problem.addVariables(strings, facts['strings'])
+        #problem.addVariables(integers, facts['integers'])
+        problem.addConstraint(FunctionConstraint(self.order_constraint), 
+                                        ('list_next', 'list_prev', 'name', 'srcversion', 'holders_dir'))
+        problem.addConstraint(lambda a, b=256: a[0] < b, ('holders_dir',))
+        problem.addConstraint(FunctionConstraint(self.list_head), ('list_next', 'list_prev', 'name'))
+        problem.addConstraint(FunctionConstraint(self.string_pointer), ('srcversion',))
+        problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('srcversion', 'holders_dir'))
+        problem.addConstraint(FunctionConstraint(self.kobject), ('holders_dir',))
+
+        # kp could be NULL
+        #problem.addConstraint(FunctionConstraint(self.kernel_param), ('kp',))
+        #problem.addConstraint(lambda a, b=264: a[0] == b, ('kp',))
+
+        solutions = problem.getSolutions()
+        for item in solutions:
+            print(item)
+        if len(solutions) > 0:
+            return True
+        else:
+            return False
 
 def test():
     problem = Problem()
@@ -508,7 +691,44 @@ def main():
     mem_path = sys.argv[1]
     #addr_space = mr.AddressSpace(mem_path, 0x50a0a000)
     query = Query(mem_path, 0, 0)
-    print(query.vtop(0xffffffff98e104c0+query.kaslr_shift_vtov))
+    image_name = os.path.basename(sys.argv[1])
+    symbol_file = image_name + "_symbol_table"
+    query_cmd = ["init_task"]
+    query_object = {"init_task": "task_struct", "init_fs": "fs_struct", "modules": "module", 
+                    "mount_hashtable": "mount_hash",
+                    "neigh_tables": "neigh_tables", "iomem_resource": "resource",
+                    "tcp4_seq_afinfo": "tcp_seq_afinfo", "udp4_seq_afinfo": "udp_seq_afinfo",
+                    "tty_drivers": "tty_driver",
+                    "proc_root": "proc_dir_entry",
+                    "idt_table": "gate_struct",
+                    "module_kset": "kset",
+                    "inet_sock": "inet_sock"}
+    #query.extract_facts(0x17539c00, 8, 1)
+    #return
+    symbol_table = {}
+    #Read symbol address from recovered symbole table
+    with open(symbol_file, 'r') as symbol:
+        content = symbol.read().split('\n')
+        for item in content:
+            tmp = item.split()
+            if not len(tmp) == 3:
+                continue
+            if tmp[-1] in query_cmd:
+                print("find", tmp[-1])
+                if tmp[0].endswith('L'):
+                    tmp[0] = tmp[0][:-1]
+                symbol_table[tmp[-1]] = int(tmp[0], 16) + query.kaslr_shift_vtov
+    print(symbol_table)
+    for cmd in query_cmd:
+        paddr = query.vtop(symbol_table[cmd])
+        if cmd == 'init_task':
+            paddr = query.find_next_task(paddr)
+            query.extract_facts(0x1a511680, 2048, 0)
+            query.task_struct(paddr)
+        elif cmd == 'modules':
+            paddr = query.find_next_module(paddr)
+            query.module([0, paddr])
+    #print(hex(query.vtop(0xffffffff98e104c0+query.kaslr_shift_vtov)))
     #facts = addr_space.extract_facts(1352742720)
     #facts = addr_space.extract_facts(0x12b37b138-1256-16, 4096, 0)
     #facts = query.extract_facts(0x1bda08a0-2192-16, 4096, 1)
@@ -518,7 +738,7 @@ def main():
     #query.extract_facts(0x1eefc7c0, 4096, 1)
     # cred
     #query.extract_facts(0x1edec000, 4096, 1)
-    #query.extract_facts(0x13a49dc0, 4096, 1)
+    #query.extract_facts(0x1505a448, 1024, 1)
     #facts = query.extract_facts(0x1bda71b0-1904, 4096, 1)
     #problem = Problem(BacktrackingSolver())
     #query.task_struct(0x12b37b138-1256-16)
@@ -530,7 +750,14 @@ def main():
     #for item in facts['pointers']:
     #    print(item)
     #query.files_struct([0, 0x1bd9c2c0])
-    query.vm_area_struct([0, 0x1edecd80])
+    #query.vm_area_struct([0, 0x1edecd80])
+    #query.dentry([0, 0x18dc96c0])
+
+    #task_addr = query.find_next_task(query.vtop(0xffffffff98e104c0+query.kaslr_shift_vtov))
+    #print(hex(task_addr))
+    #module_addr = query.find_next_module(query.vtop(0xffffffff98e88ef0+query.kaslr_shift_vtov))
+    #print(hex(module_addr))
+    #query.module(module_addr)
 
 
 

@@ -19,6 +19,7 @@ class AddressSpace(linux.AMD64PagedMemory):
         self.mem_path = mem_path
         self.image_name = os.path.basename(self.mem_path)
         self.dtb_paddr = dtb
+        self.version_index = 0
         if not os.path.exists(self.image_name + '_metadata'):
             self.mem.seek(0)
             if b'ELF' in self.mem.read(6):
@@ -37,7 +38,7 @@ class AddressSpace(linux.AMD64PagedMemory):
                 if int(version_num[0])<=4 and int(version_num[1])<6:
                     self.find_kallsyms_address_pre_46()
                 else:
-                    self.find_kallsyms_address()
+                    self.find_kallsyms_address(self.version_index)
             # find dtb vaddr from memory snapshot
             # This symbol address is shifted by virtual kaslr shift
             # the same symbol recovered from the kernel symbol table is not shifted
@@ -97,6 +98,8 @@ class AddressSpace(linux.AMD64PagedMemory):
         if version_idx < 0:
             print('Error: cannot find Linux version or it is too old')
             return 0
+        print("linux version index", hex(version_idx))
+        self.version_index = version_idx
         self.mem.seek(version_idx + len('Linux version '))
         version = self.mem.read(8).decode('utf-8')
         major_ver_idx = version.index('.')
@@ -670,6 +673,60 @@ class AddressSpace(linux.AMD64PagedMemory):
                             continue
                         print("found init_task at", hex(paddr))
                         return
+    def find_next_task(self, init_paddr):
+        '''
+        find the next task from the first init_task, reason about the next task_struct instead of the first
+        `swapper` process.
+        '''
+        comm_offset = 0
+        facts = self.extract_facts(init_paddr, 4096, 0)
+        for item in facts['strings']:
+            if 'swapper' in item[1]:
+                comm_offset = item[0]
+        if comm_offset == 0:
+            print('swapper not found')
+            return -1
+        for index in range(len(facts['pointers'])):
+            task_next = facts['pointers'][index]
+            if task_next[1] == init_paddr + task_next[0]:
+                continue
+            next_ts_base_addr = task_next[1] - task_next[0]
+            comm = self.extract_facts(next_ts_base_addr + comm_offset, 8, 0)
+            if not comm:
+                continue
+            if len(comm['strings'])==0:
+                continue
+            else:
+                #print(comm['strings'], task_next[0])
+                task_prev = facts['pointers'][index+1]
+                if task_prev[1] == 0:
+                    continue
+                prev_ts_base_addr = task_prev[1] - task_next[0]
+                task_prev_comm = self.extract_facts(prev_ts_base_addr + comm_offset, 8, 0)
+                if not task_prev_comm or len(task_prev_comm['strings'])==0:
+                    continue
+                else:
+                    return next_ts_base_addr
+        return 0
+
+    def find_next_module(self, init_paddr):
+        facts = self.extract_facts(init_paddr, 8, 0)
+        if not facts or len(facts['pointers'])==0:
+            print("modules address invalid")
+            return -1
+        module = facts['pointers'][0]
+        module_fact = self.extract_facts(module[1], 24, 0)
+        if module_fact and module_fact['strings']:
+            new_facts = self.extract_facts(module[1], 8, 0)
+            if not new_facts or len(new_facts['pointers']) == 0:
+                return -1
+            module = new_facts['pointers'][0]
+            module_fact = self.extract_facts(module[1], 24, 0)
+            if module_fact and module_fact['strings']:
+                return module[1] - 8
+        print("module structure base addr not found")
+        return 0
+
     def v(self, size, content):
         s = '<' + str(size/8) + 'Q'
         return struct.unpack(s, content)
@@ -816,6 +873,9 @@ class AddressSpace(linux.AMD64PagedMemory):
                 self.log("Finish searching")
     
     def extract_facts(self, paddr, size = 4096, verbose = 0):
+        '''
+        TODO: handle strings larger than 8 bytes
+        '''
         valid_pointer = []
         valid_long = []
         valid_int = []
@@ -823,8 +883,8 @@ class AddressSpace(linux.AMD64PagedMemory):
         unknown_pointer = []
         content = self.read_memory(paddr, size)
         if not content:
-            print("No avaliable page")
-            return -1
+            #print("No avaliable page")
+            return {}
         value = struct.unpack('<%dQ' % (size/8), content)
         for index in range(len(value)):
             number = value[index]
@@ -841,22 +901,24 @@ class AddressSpace(linux.AMD64PagedMemory):
                             print("[-] ", index*8, hex(paddr+index*8), "pointer", number, [c for c in content[index*8:index*8+8]])
                     else:
                         str_content = content[index*8:(index+1)*8].decode('utf-8', errors='ignore')
-                        if all(ord(c)>=36 and ord(c)<=122 or ord(c)==0 for c in str_content):
+                        #if all(ord(c)>=36 and ord(c)<=122 or ord(c)==0 for c in str_content):
+                        if all(c>=36 and c<=122 or c==0 for c in content[index*8:index*8+8]):
                             if len(str_content.replace('\x00', '')) >= 1:
                                 valid_string.append([index*8, str_content.replace('\x00', '')])
                                 if verbose:
-                                    print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number), [c for c in content[index*8:index*8+8]])
+                                    print("[-] ", index*8, hex(paddr+index*8), "string1: ", str_content, hex(number), [c for c in content[index*8:index*8+8]])
                         else:
                             valid_long.append([index*8, number])
                             if verbose:
                                 print("[-] ", index*8, hex(paddr+index*8), "long", hex(number), [c for c in content[index*8:index*8+8]])
                 elif number < 0xffffffffffff:
                     str_content = content[index*8:(index+1)*8].decode('utf-8', errors='ignore')
-                    if all(ord(c)>=36 and ord(c)<=122 or ord(c)==0 for c in str_content):
+                    #if all(ord(c)>=36 and ord(c)<=122 or ord(c)==0 for c in str_content):
+                    if all(c>=36 and c<=122 or c==0 for c in content[index*8:index*8+8]):
                         if len(str_content.replace('\x00', '')) >= 1:
                             valid_string.append([index*8, str_content.replace('\x00', '')])
                             if verbose:
-                                print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number), [c for c in content[index*8:index*8+8]])
+                                print("[-] ", index*8, hex(paddr+index*8), "string2: ", str_content, hex(number), [c for c in content[index*8:index*8+8]])
                     else:
                         valid_long.append([index*8, number])
                         if verbose:
@@ -866,13 +928,13 @@ class AddressSpace(linux.AMD64PagedMemory):
                 else:
                     str_content = content[index*8:(index+1)*8].decode('utf-8', errors='ignore')
                     count = 0
-                    for c in str_content:
-                        if ord(c)>=32 and ord(c)<=122:
+                    for c in content[index*8:(index+1)*8]:
+                        if c>=32 and c<=122:
                             count += 1
                     if count >= 4:
                         valid_string.append([index*8, str_content.replace('\x00', '')])
                         if verbose:
-                            print("[-] ", index*8, hex(paddr+index*8), "string: ", str_content, hex(number), [c for c in content[index*8:index*8+8]])
+                            print("[-] ", index*8, hex(paddr+index*8), "string3: ", str_content, hex(number), [c for c in content[index*8:index*8+8]])
                     else:
                         unknown_pointer.append([index*8, number])
                         if verbose:
