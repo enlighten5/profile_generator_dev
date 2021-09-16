@@ -32,13 +32,21 @@ class AddressSpace(linux.AMD64PagedMemory):
         
             #identify Linux kernel version
             self.LinuxVersion = self.findLinuxVersion()
+            print("linux version", self.LinuxVersion)
             #recover kernel symbols
             if not os.path.exists(self.image_name + '_symbol_table'):
                 version_num = self.LinuxVersion.split('.')
-                if int(version_num[0])<=4 and int(version_num[1])<6:
+                if int(version_num[0]==4):
+                    if int(version_num[1]) < 6:
+                        self.find_kallsyms_address_pre_46()
+                    else:
+                        self.find_kallsyms_address(self.version_index)
+                elif int(version_num[0]) < 4:
+                    exit(0)
                     self.find_kallsyms_address_pre_46()
                 else:
                     self.find_kallsyms_address(self.version_index)
+
             # find dtb vaddr from memory snapshot
             # This symbol address is shifted by virtual kaslr shift
             # the same symbol recovered from the kernel symbol table is not shifted

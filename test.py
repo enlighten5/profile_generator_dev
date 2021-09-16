@@ -453,8 +453,8 @@ class Query(mr.AddressSpace):
             return False        
 
     def files_struct(self, files):
-        '''
-        no field change, offsets can be hard-coded.
+        '''Constraints for files structure. 
+           no field change, offsets can be hard-coded.
         '''
         facts = self.extract_facts(files[1], 256, 0)
         if len(facts['integers']) == 0 or len(facts['pointers']) == 0 or len(facts['longs']) == 0:
@@ -469,7 +469,7 @@ class Query(mr.AddressSpace):
         problem.addVariables(longs, facts['longs'])
         problem.addConstraint(FunctionConstraint(self.order_constraint), 
                                         ('count', 'fdt', 'full_fds_bits_init', 'fd_array'))
-        problem.addConstraint(lambda a, b=32: a[0] == 32, ('fdt', ))
+        problem.addConstraint(lambda a, b=32: a[0] == b, ('fdt', ))
         problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('full_fds_bits_init', 'fd_array'))
         problem.addConstraint(FunctionConstraint(self.fdtable_struct), ('fdt',))
 
@@ -513,10 +513,10 @@ class Query(mr.AddressSpace):
                                         ('tasks_next', 'tasks_prev', 'mm', 'active_mm', 'pid', 
                                         'tgid', 'parent', 'real_parent', 'child', 'group_leader', 
                                         'real_cred', 'cred', 'comm', 'files'))
+        # mm and active_mm fields are adjacent.
         problem.addConstraint(lambda a, b: b[0] == a[0] + 8, 
                                         ('mm', 'active_mm'))
-        problem.addConstraint(lambda a, b=1000: a[0] > b, 
-                                        ('active_mm',))
+        # mm and active_mm are not zero and satisfy mm_struct constraints.
         problem.addConstraint(lambda a, b=0: a[1] != b, 
                                         ('mm',))
         problem.addConstraint(lambda a, b=0: a[1] != b, 
@@ -524,7 +524,8 @@ class Query(mr.AddressSpace):
         
         problem.addConstraint(FunctionConstraint(self.mm_struct), ('mm',))
         problem.addConstraint(FunctionConstraint(self.mm_struct), ('active_mm',))
-
+        # tasks_next refer to the `next` field in tasks list_head. tasks is a nested object not a pointer.
+        # relative distance between next and active_mm, the value is experimental.
         problem.addConstraint(lambda a, b: a[0] > b[0]-100, 
                                         ('tasks_next', 'active_mm'))
         problem.addConstraint(lambda a, b=0: a[1] != b, 
@@ -541,6 +542,9 @@ class Query(mr.AddressSpace):
                                         ('parent', 'real_parent'))
         problem.addConstraint(lambda a, b=0: a[1] != b, 
                                         ('real_parent',))
+        # query another task_struct, currently we only utilize the facts that 
+        # the target task_struct should have `comm` and `tasks` fields at the same offset. 
+        # TODO: recursive query target task_struct using all constraints defined here.
         problem.addConstraint(FunctionConstraint(self.parent_task), 
                                         ('parent', 'comm', 'tasks_next'))
         problem.addConstraint(FunctionConstraint(self.parent_task), 
