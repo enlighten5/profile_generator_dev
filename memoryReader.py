@@ -29,7 +29,7 @@ class AddressSpace(linux.AMD64PagedMemory):
             else:
                 self.has_elf_header = False
                 print("no elf header")
-        
+
             #identify Linux kernel version
             self.LinuxVersion = self.findLinuxVersion()
             print("linux version", self.LinuxVersion)
@@ -50,7 +50,7 @@ class AddressSpace(linux.AMD64PagedMemory):
             # find dtb vaddr from memory snapshot
             # This symbol address is shifted by virtual kaslr shift
             # the same symbol recovered from the kernel symbol table is not shifted
-            # substracting one from another, we can get the virtual kaslr shift 
+            # substracting one from another, we can get the virtual kaslr shift
             # it's possible that SYMBOL(swapper_pg_dir) cannot be found from the memory snapshot
             vdtb_idx = self.mem.find(b'SYMBOL(swapper_pg_dir)=') + len("SYMBOL(swapper_pg_dir)=")
             if vdtb_idx-len("SYMBOL(swapper_pg_dir)=")>0:
@@ -63,7 +63,7 @@ class AddressSpace(linux.AMD64PagedMemory):
             self.kaslr_shift_vtop = self.kaslr_vtop_shift('kallsyms_on_each_symbol')
             self.kaslr_shift_vtov, self.dtb_paddr = self.kaslr_vtov_shift()
             print("vtop shift {0} vtov shift {1} dtb_paddr {2}".format(hex(self.kaslr_shift_vtop), hex(self.kaslr_shift_vtov), hex(self.dtb_paddr)))
-            
+
     def find_page_table(self, dtb):
         offset = dtb & 0xfff
         for step in range(offset, self.mem.size(), 4096):
@@ -232,11 +232,11 @@ class AddressSpace(linux.AMD64PagedMemory):
             if table_size > 1:
                 continue
             table_size = 512/8
-            
+
             #print "t in table", kallsyms_token_table.count('\x00'), kallsyms_token_table.count('r'), len(kallsyms_token_table)
-            # table length is less than 1000. around 300 zeros in it. let's exam 512 element of them. 
+            # table length is less than 1000. around 300 zeros in it. let's exam 512 element of them.
             '''
-                The characters in token_table are valid as per naming rules; they are combinations of 
+                The characters in token_table are valid as per naming rules; they are combinations of
                 letters, numbers and symbols like underscores
             '''
             # I changed this range for ARM64 images, it used to be 46-125 for x86_64
@@ -303,7 +303,7 @@ class AddressSpace(linux.AMD64PagedMemory):
                 #print [i for i in kallsyms_token_index[index]]
             #print "len of token index array", len(kallsyms_token_index_v)
             '''
-                The token index start from zero, and in an increasing order. 
+                The token index start from zero, and in an increasing order.
             '''
             if not kallsyms_token_index_v[0] == 0:
                 continue
@@ -325,11 +325,11 @@ class AddressSpace(linux.AMD64PagedMemory):
             print("Cannot find token_index")
         else:
             return result
-    def extract_kallsyms_symbols(self, symbol_name, 
-                                    kallsyms_names_addr, 
+    def extract_kallsyms_symbols(self, symbol_name,
+                                    kallsyms_names_addr,
                                     name_size,
                                     kallsyms_num_syms,
-                                    kallsyms_token_table_addr, 
+                                    kallsyms_token_table_addr,
                                     kallsyms_token_index_addr):
         size = kallsyms_num_syms
         # 4.11.bin
@@ -349,13 +349,13 @@ class AddressSpace(linux.AMD64PagedMemory):
             exit(0)
         kallsyms_token_table = ""
         kallsyms_token_table_v = []
-        
+
         #kallsyms_token_index_addr = 0xffffffff814bded0
         # 4.11.bin
         #kallsyms_token_index_addr = 0xffffffff81c82090 + 0x1c400000
         # 4.12.bin
         #kallsyms_token_index_addr = 0xffffffff81c82090 + 0x5400000
-        
+
         #kallsyms_token_index_addr = self.vtop(kallsyms_token_index_addr)
         if not kallsyms_token_index_addr:
             print("[-]Error: invalid kallsyms_token_index_addr")
@@ -376,7 +376,7 @@ class AddressSpace(linux.AMD64PagedMemory):
             for item in kallsyms_names:
                 output.write(str((item, ord(item)))+'\n')
         '''
-        
+
 
         # Extract kallsyms_token_table
         table_size = (kallsyms_token_index_addr - kallsyms_token_table_addr)/8
@@ -400,7 +400,7 @@ class AddressSpace(linux.AMD64PagedMemory):
                 output.write(str((item, ord(item)))+'  ')
         '''
         #print [ord(i) for i in kallsyms_token_table]
-        
+
         # Extract kallsyms_token_index
         # Not sure about the index_size
         # From script/kallsyms.c, it has 256 entry, 256*2/8 = 64
@@ -432,7 +432,7 @@ class AddressSpace(linux.AMD64PagedMemory):
             off = self.kallsyms_expand_symbol(off, symbol_name, kallsyms_names, kallsyms_token_table, kallsyms_token_index_v)
         #off = self.kallsyms_expand_symbol(off, kallsyms_names, kallsyms_token_table_v, kallsyms_token_index_v)
     def kallsyms_expand_symbol(self, off, symbol_name,
-                                kallsyms_names, 
+                                kallsyms_names,
                                 kallsyms_token_table, kallsyms_token_index):
         skipped_first = 0
         max_len = 128
@@ -440,7 +440,7 @@ class AddressSpace(linux.AMD64PagedMemory):
             Get the index of compressed symbol length from the first symbol byte.
         '''
         data = off
-        # Convert char to decimal. 
+        # Convert char to decimal.
         #length = ord(kallsyms_names[data])
         length = kallsyms_names[data]
         data += 1
@@ -456,7 +456,7 @@ class AddressSpace(linux.AMD64PagedMemory):
             For every byte on the compressed symbol data, copy the table
 	        entry for that byte.
         '''
-        
+
         while length:
             #print "token_index", len(kallsyms_names), data, length, ord(kallsyms_names[data])
             if data >= len(kallsyms_names)-1:
@@ -472,7 +472,7 @@ class AddressSpace(linux.AMD64PagedMemory):
             #print "len", length
             data += 1
             length -= 1
-            
+
             while ord(kallsyms_token_table[token_table_index]):
                 #print "index", token_table_index, ord(kallsyms_token_table[token_table_index])
                 if skipped_first:
@@ -483,7 +483,7 @@ class AddressSpace(linux.AMD64PagedMemory):
                 else:
                     skipped_first = 1
                 token_table_index += 1
-            
+
         #print "result:", result
         symbol_name.append(result)
         return off
@@ -578,12 +578,12 @@ class AddressSpace(linux.AMD64PagedMemory):
                     offsets.append(item)
                     #symbol_address.append(kallsyms_relative_base_v + item)
             kallsyms_offsets += 0x8
-            number_sysms -= 2 
+            number_sysms -= 2
         kallsyms_names_addr = kallsyms_relative_base + 16
         kallsyms_token_table_addr = self.find_token_table(kallsyms_names_addr)
         kallsyms_token_index_addr = self.find_token_index(kallsyms_token_table_addr)
         symbol_name = []
-        # Size of kallsyms_names in page granularity. 
+        # Size of kallsyms_names in page granularity.
         # It's ok to use a larger name size, if we do not know the exact size.
         name_size = 0x115*2
         self.extract_kallsyms_symbols(symbol_name, kallsyms_names_addr, name_size, kallsyms_num_syms, kallsyms_token_table_addr, kallsyms_token_index_addr)
@@ -741,19 +741,19 @@ class AddressSpace(linux.AMD64PagedMemory):
 
     def find_modules(self):
         '''
-        This function is to locate the golbal symbol 'modules'. It first starts from a random kernel module 
+        This function is to locate the golbal symbol 'modules'. It first starts from a random kernel module
         that is very likely to be loaded and identifies its location in the memory as well as the next and prev pointers in that module structure.
-        Then it traverse the module list until reaching the first one in the double linked list. 
+        Then it traverse the module list until reaching the first one in the double linked list.
         We rely on the following evidence to find the top one in the list:
                                          | module_struct |     | module_struct |
             global symbol `modules` -->  | next          | --> | next          |
                                          | prev          |     | prev          |
                                          | module name   |     | module name   |
-            The prev of the first element points to the global symbol module, and it does not have a string value (module name) below.  
-            In other words, it prev points to a location where there is a string value below, then it is not the first element. 
-        Based on the above information, we can locate the global symbol `modules` in the memory. 
-        Then we just find its virtual address and put it in the profile. 
-    
+            The prev of the first element points to the global symbol module, and it does not have a string value (module name) below.
+            In other words, it prev points to a location where there is a string value below, then it is not the first element.
+        Based on the above information, we can locate the global symbol `modules` in the memory.
+        Then we just find its virtual address and put it in the profile.
+
         '''
         for step in range(0, self.mem.size(), 4096):
             page = self.read_memory(step, 4096)
@@ -766,7 +766,7 @@ class AddressSpace(linux.AMD64PagedMemory):
             target_v = 1
             module_v = 0
             found = 0
-            # We start from a random kernel module that is very likely to be loaded. 
+            # We start from a random kernel module that is very likely to be loaded.
             module_name = "binfmt"
             #value = self.v(4096, page)
             value = struct.unpack('<512Q', page)
@@ -822,7 +822,7 @@ class AddressSpace(linux.AMD64PagedMemory):
                     if not target or not len(target) == 8:
                         continue
                     target_v = self.v(8, target)[0]
-                
+
 
                 if target_v == next_ and target_v > 0xffffffff00000000:
                     print("found modlues", hex(target_v), hex(module_v), hex(prev_))
@@ -840,7 +840,7 @@ class AddressSpace(linux.AMD64PagedMemory):
                                     continue
                                 print("found global symbol at", hex(step + item*8), hex(number), hex(target_v))
                                 modules = step + item*8
-                    
+
                     for step in range(0x0, 0xf0000000, 4096):
                         vaddr = step + 0xffffffff00000000
                         paddr = self.vtop(vaddr)
@@ -849,13 +849,13 @@ class AddressSpace(linux.AMD64PagedMemory):
                             self.log("Finish searching")
 
                         pass
-        
+
         if not found:
             return
         print("the first module is at", hex(target_v))
         if target_v == 1:
             return
-        
+
         # To find the golbal symbol modules, we need to search in the memory to find the location which contains target_v
         modules = 0
         for step in range(0, self.mem.size(), 4096):
@@ -872,14 +872,14 @@ class AddressSpace(linux.AMD64PagedMemory):
                     modules = step + item*8
 
         print (self.vtop(0xffffffff9e288ef0) == modules)
-        
+
         for step in range(0x0, 0xf0000000, 4096):
             vaddr = step + 0xffffffff00000000
             paddr = self.vtop(vaddr)
             if paddr == modules & 0xffffffffff000:
                 print("found vaddr", hex(vaddr), hex(vaddr + (modules & 0xfff)))
                 self.log("Finish searching")
-    
+
     def extract_facts(self, paddr, size = 4096, verbose = 0):
         '''
         TODO: handle strings larger than 8 bytes
@@ -930,7 +930,7 @@ class AddressSpace(linux.AMD64PagedMemory):
                     else:
                         valid_long.append([index*8, number])
                         if verbose:
-                            print("[-] ", index*8, hex(paddr+index*8), "long", hex(number), [c for c in content[index*8:index*8+8]])                    
+                            print("[-] ", index*8, hex(paddr+index*8), "long", hex(number), [c for c in content[index*8:index*8+8]])
                 elif number == 0xffffffffffffffff:
                     pass
                 else:

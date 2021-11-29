@@ -367,19 +367,6 @@ class Query(mr.AddressSpace):
         else:
             return False
 
-    def _list_head(self, next, prev, comm):
-        next_comm_addr = next[1] - next[0] + comm[0]
-        prev_comm_addr = prev[1] - next[0] + comm[0]
-        facts1 = self.extract_facts(next_comm_addr, 16, 0)
-        facts2 = self.extract_facts(prev_comm_addr, 16, 0)
-
-        if not facts1 or not facts2:
-            return False
-        elif len(facts1['strings']) > 0 and len(facts2['strings']) > 0:
-            return True
-        else:
-            return False
-
     def parent_task(self, parent, comm, tasks_next):
         facts = self.extract_facts(parent[1])
         if len(facts['strings']) == 0:
@@ -466,8 +453,8 @@ class Query(mr.AddressSpace):
             return False
 
     def files_struct(self, files):
-        '''Constraints for files structure.
-           no field change, offsets can be hard-coded.
+        '''
+        no field change, offsets can be hard-coded.
         '''
         facts = self.extract_facts(files[1], 256, 0)
         if len(facts['integers']) == 0 or len(facts['pointers']) == 0 or len(facts['longs']) == 0:
@@ -482,7 +469,7 @@ class Query(mr.AddressSpace):
         problem.addVariables(longs, facts['longs'])
         problem.addConstraint(FunctionConstraint(self.order_constraint),
                                         ('count', 'fdt', 'full_fds_bits_init', 'fd_array'))
-        problem.addConstraint(lambda a, b=32: a[0] == b, ('fdt', ))
+        problem.addConstraint(lambda a, b=32: a[0] == 32, ('fdt', ))
         problem.addConstraint(lambda a, b: b[0] == a[0] + 8, ('full_fds_bits_init', 'fd_array'))
         problem.addConstraint(FunctionConstraint(self.fdtable_struct), ('fdt',))
 
@@ -512,29 +499,24 @@ class Query(mr.AddressSpace):
         problem = Problem(BacktrackingSolver())
         facts = self.extract_facts(base_addr, 4096, 0)
 
-        pointers = ['stack', 'mm', 'active_mm', 'tasks_next', 'tasks_prev', 'parent', 'real_parent',
-                    'child', 'group_leader', 'ptraced_next', 'ptraced_prev', 'ptrace_entry_next', 'ptrace_entry_prev',
-                     'real_cred', 'cred', 'files']
+        pointers = ['mm', 'active_mm', 'tasks_next', 'tasks_prev', 'parent', 'real_parent',
+                    'child', 'group_leader', 'real_cred', 'cred', 'files']
         problem.addVariables(pointers, facts['pointers'])
 
         strings = ['comm']
         problem.addVariables(strings, facts['strings'])
 
-        integers = ['flags', 'ptrace', 'pid', 'tgid']
+        integers = ['pid', 'tgid']
         problem.addVariables(integers, facts['integers'])
 
         problem.addConstraint(FunctionConstraint(self.order_constraint),
-                                        ('stack', 'flags', 'ptrace', 'tasks_next', 'tasks_prev', 'mm', 'active_mm', 'pid',
-                                        'tgid', 'parent', 'real_parent', 'child', 'group_leader', 'ptraced_next',
-                                        'ptraced_prev', 'ptrace_entry_next', 'ptrace_entry_prev',
+                                        ('tasks_next', 'tasks_prev', 'mm', 'active_mm', 'pid',
+                                        'tgid', 'parent', 'real_parent', 'child', 'group_leader',
                                         'real_cred', 'cred', 'comm', 'files'))
-        problem.addConstraint(lambda a, b=16: a[0] == b, ('stack',))
-        problem.addConstraint(lambda a, b=0: a[1] > b, ('stack',))
-        problem.addConstraint(lambda a, b: b[0] == a[0] + 16, ('stack', 'ptrace'))
-        # mm and active_mm fields are adjacent.
         problem.addConstraint(lambda a, b: b[0] == a[0] + 8,
                                         ('mm', 'active_mm'))
-        # mm and active_mm are not zero and satisfy mm_struct constraints.
+        problem.addConstraint(lambda a, b=1000: a[0] > b,
+                                        ('active_mm',))
         problem.addConstraint(lambda a, b=0: a[1] != b,
                                         ('mm',))
         problem.addConstraint(lambda a, b=0: a[1] != b,
@@ -542,8 +524,7 @@ class Query(mr.AddressSpace):
 
         problem.addConstraint(FunctionConstraint(self.mm_struct), ('mm',))
         problem.addConstraint(FunctionConstraint(self.mm_struct), ('active_mm',))
-        # tasks_next refer to the `next` field in tasks list_head. tasks is a nested object not a pointer.
-        # relative distance between next and active_mm, the value is experimental.
+
         problem.addConstraint(lambda a, b: a[0] > b[0]-100,
                                         ('tasks_next', 'active_mm'))
         problem.addConstraint(lambda a, b=0: a[1] != b,
@@ -560,9 +541,6 @@ class Query(mr.AddressSpace):
                                         ('parent', 'real_parent'))
         problem.addConstraint(lambda a, b=0: a[1] != b,
                                         ('real_parent',))
-        # query another task_struct, currently we only utilize the facts that
-        # the target task_struct should have `comm` and `tasks` fields at the same offset.
-        # TODO: recursive query target task_struct using all constraints defined here.
         problem.addConstraint(FunctionConstraint(self.parent_task),
                                         ('parent', 'comm', 'tasks_next'))
         problem.addConstraint(FunctionConstraint(self.parent_task),
@@ -573,11 +551,6 @@ class Query(mr.AddressSpace):
                                         ('child', 'group_leader'))
         problem.addConstraint(FunctionConstraint(self.parent_task),
                                         ('group_leader', 'comm', 'tasks_next'))
-        problem.addConstraint(lambda a, b: b[0] == a[0]+8, ('group_leader', 'ptraced_next'))
-        problem.addConstraint(lambda a, b: b[0] == a[0] + 16, ('ptraced_next', 'ptrace_entry_next'))
-        problem.addConstraint(lambda a, b: b[0] == a[0] + 16, ('ptraced_prev', 'ptrace_entry_prev'))
-        problem.addConstraint(FunctionConstraint(self._list_head), ('ptraced_next', 'ptraced_prev', 'comm'))
-        problem.addConstraint(FunctionConstraint(self._list_head), ('ptrace_entry_next', 'ptrace_entry_prev', 'comm'))
         problem.addConstraint(lambda a, b: b[0] == a[0] + 8,
                                         ('real_cred', 'cred'))
         problem.addConstraint(lambda a, b=2: len(a[1]) > b,
@@ -750,7 +723,7 @@ def main():
         paddr = query.vtop(symbol_table[cmd])
         if cmd == 'init_task':
             paddr = query.find_next_task(paddr)
-            #query.extract_facts(paddr, 4096, 1)
+            query.extract_facts(0x1a511680, 2048, 0)
             query.task_struct(paddr)
         elif cmd == 'modules':
             paddr = query.find_next_module(paddr)
@@ -765,9 +738,7 @@ def main():
     #query.extract_facts(0x1eefc7c0, 4096, 1)
     # cred
     #query.extract_facts(0x1edec000, 4096, 1)
-
-    #query.extract_facts(0x1bda08c8, 4096, 1)
-
+    #query.extract_facts(0x1505a448, 1024, 1)
     #facts = query.extract_facts(0x1bda71b0-1904, 4096, 1)
     #problem = Problem(BacktrackingSolver())
     #query.task_struct(0x12b37b138-1256-16)

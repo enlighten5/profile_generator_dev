@@ -1,8 +1,8 @@
 /*
 This file contains part of logic rules used by LogicMem
 In the following code, tuples represent the address and value of~ a field.
-for example, in [MM_addr, MM_addr_val], the MM_addr is a candidate address of the mm field, and MM_val 
-is the value of that field. 
+for example, in [MM_addr, MM_addr_val], the MM_addr is a candidate address of the mm field, and MM_val
+is the value of that field.
 
 offset can be calculated by MM_addr - Base_addr
 
@@ -30,13 +30,13 @@ query_task_struct(Base_addr) :-
         [Files_addr, Files_val]
     ]),
     Str_profile = ([
-        [Comm_addr, Comm_val]    
+        [Comm_addr, Comm_val]
     ]),
     Int_profile = ([
         [Pid_addr, Pid_val],
-        [Tgid_addr, Tgid_val]    
+        [Tgid_addr, Tgid_val]
     ]),
-    
+
     % adjacency constraints
     MM2_addr #= MM_addr + 8,
     MM2_val #> 0,
@@ -50,13 +50,13 @@ query_task_struct(Base_addr) :-
 
     Group_leader_addr #=< Child_addr +32,
     Cred_addr #= Real_cred_addr + 8,
-    
+
     Files_addr #< Comm_addr + 200,
     Files_addr #= FS_struct_addr + 8,
     FS_struct_val #> 0,
-    
+
     % apply order constants
-    chain([Tasks_addr, Tasks2_addr, MM_addr, MM2_addr, Pid_addr, Tgid_addr, Real_parent_addr, Parent_addr , Child_addr, 
+    chain([Tasks_addr, Tasks2_addr, MM_addr, MM2_addr, Pid_addr, Tgid_addr, Real_parent_addr, Parent_addr , Child_addr,
            Group_leader_addr, Thread_group_addr, Real_cred_addr, Cred_addr, Comm_addr, Fs_struct_addr, Files_addr], #<),
 
     tuples_in(Ptr_profile, Ptr),
@@ -65,7 +65,7 @@ query_task_struct(Base_addr) :-
 
     label([MM2_addr, MM2_val]),
     label([MM_addr, MM_val]),
-    
+
     % check object type
     query_mm_struct(MM2_val),
 
@@ -75,7 +75,7 @@ query_task_struct(Base_addr) :-
     Tasks_offset #= Tasks_addr - Base_addr,
     Tasks_val #> 0,
     query_list_head(Tasks_val, Comm_offset, Tasks_offset),
-    
+
 
     labeling([enum], [Tasks2_addr, Tasks2_val]),
 
@@ -110,14 +110,14 @@ query_task_struct(Base_addr) :-
 
     log("./profile/task_struct", "task_struct time", End, Start).
 
-possible_mm_struct(Current_addr) :- 
+possible_mm_struct(Current_addr) :-
     statistics(real_time, [Start|_]),
     pointer(Ptr),
     long(Ulg),
 
     Ptr_profile = [
         [Mmap_addr, Mmap_val],
-        [Pgd_addr, Pgd_val]  
+        [Pgd_addr, Pgd_val]
     ],
     Ulong_profile = [
         [Mmap_base_addr, Mmap_base_val],
@@ -135,7 +135,7 @@ possible_mm_struct(Current_addr) :-
     chain([Mmap_addr, Mmap_base_addr, Task_size_addr, Pgd_addr], #<),
     Pgd_addr #> Task_size_addr,
     Pgd_addr #=< Task_size_addr + 40,
-    
+
     Start_brk_addr #> Pgd_addr,
     Start_stack_val #> Mmap_base_val,
     ARG_start_addr #< Current_addr + 500,
@@ -147,19 +147,19 @@ possible_mm_struct(Current_addr) :-
     ENV_end_val #>= ENV_start_val,
 
     chain([Start_brk_addr, Brk_addr, Start_stack_addr, ARG_start_addr], #<),
-    
+
     tuples_in(Ptr_profile, Ptr),
     tuples_in(Ulong_profile, Ulg),
 
     Mmap_val #> 0,
     Pgd_val #> 0,
     labeling([enum], [Mmap_addr, Mmap_val, Mmap_base_addr, Pgd_addr, Pgd_val]),
-    
+
     % object type constraint: mmap should point to a vm_area_struct object
     process_create(path('python'),
                     ['subquery.py', Mmap_val, "vm_area_struct", Current_addr],
                     [stdout(pipe(In))]),
-    
+
     print(In),
     read_string(In, Len, X),
     string_codes(X, Result),
@@ -206,7 +206,7 @@ possible_vm_area_struct(Base_addr, MM_addr) :-
     VM_end_addr #= VM_start_addr + 8,
     VM_next_addr #= VM_end_addr + 8,
     VM_next_addr #< Base_addr + 32,
-    
+
     VM_file_addr #< Base_addr + 180,
     VM_pgoff_addr #= VM_file_addr - 8,
     VM_flag_addr #=< Vm_page_prot_addr + 8,
@@ -220,7 +220,7 @@ possible_vm_area_struct(Base_addr, MM_addr) :-
     VM_MAYWRITE #= 0x00000020,
     VM_MAYEXEC #= 0x00000040,
     VM_MAYSHARED #= 0x00000080,
-    
+
     %bitwise and operation
     VM_flag_val /\ VM_READ #= VM_flag_val /\ VM_MAYREAD,
     VM_flag_val /\ VM_WRITE #= VM_flag_val /\ VM_MAYWRITE,
@@ -235,7 +235,7 @@ possible_vm_area_struct(Base_addr, MM_addr) :-
 
     label([VM_next_addr, VM_next_val]),
     labeling([enum], [VM_start_addr, VM_end_addr, Vm_mm_addr, Vm_mm_val, VM_flag_addr, VM_pgoff_addr, VM_file_addr, VM_file_val]),
-    
+
     VM_file_val #> 0,
     process_create(path('python'),
                 ['subquery.py', VM_file_val, "vm_file"],

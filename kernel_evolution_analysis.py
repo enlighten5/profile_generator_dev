@@ -8,7 +8,7 @@ versions3 = ["v4.0", "v4.1", "v4.2", "v4.3", "v4.4", "v4.5", "v4.6", "v4.7", "v4
 versions4 = ["v3.0", "v3.1", "v3.2", "v3.3", "v3.4", "v3.5", "v3.6", "v3.7", "v3.8", "v3.9", "v3.10"]
 versions = versions4 + versions2 + versions3 + versions1
 key_start = {
-    "task_struct": "struct task_struct {", 
+    "task_struct": "struct task_struct {",
     "mm_struct": "struct mm_struct {",
     "vm_area_struct": "struct vm_area_struct {",
     "fs_struct": "struct fs_struct {",
@@ -43,8 +43,8 @@ key_start = {
     'timekeeper': "struct timekeeper {", "pid_namespace": 'struct pid_namespace {', 'pid': 'struct pid', 'qstr': 'struct qstr',
     'seq_operations': 'struct seq_operations', 'tty_struct': 'struct tty_struct',
     'file_operations': 'struct file_operations', 'rb_root': 'struct rb_root', 'file_system_type': 'struct file_system_type',
-    'kref': 'struct kref', 
-    'ipv6_pinfo': 'struct ipv6_pinfo', 
+    'kref': 'struct kref',
+    'ipv6_pinfo': 'struct ipv6_pinfo',
     'unix_sock': 'struct unix_sock', 'sockaddr_un': 'struct sockaddr_un',
     'cpuinfo_x86': 'struct cpuinfo_x86', 'radix_tree_node': 'struct radix_tree_node', 'tcp_seq_afinfo': 'struct tcp_seq_afinfo',
     'udp_seq_afinfo': 'struct udp_seq_afinfo', 'hlist_head': 'struct hlist_head', 'upid': 'struct upid', 'hlist_node': 'struct hlist_node',
@@ -89,10 +89,10 @@ file_name = {
     'timekeeper': '/include/linux/timekeeper_internal.h', "pid_namespace": '/include/linux/pid_namespace.h', 'pid': '/include/linux/pid.h',
     'qstr': '/include/linux/dcache.h', 'seq_operations': '/include/linux/seq_file.h', 'tty_struct': '/include/linux/tty.h',
     'file_operations': '/include/linux/fs.h', 'rb_root': '/include/linux/rbtree.h', 'file_system_type': '/include/linux/fs.h',
-    'kref': '/include/linux/kref.h', 
-    'ipv6_pinfo': '/include/linux/ipv6.h', 
-    'unix_sock': '/include/net/af_unix.h', 
-    'sockaddr_un': '/include/uapi/linux/un.h', 'cpuinfo_x86': '/arch/x86/include/asm/processor.h', 
+    'kref': '/include/linux/kref.h',
+    'ipv6_pinfo': '/include/linux/ipv6.h',
+    'unix_sock': '/include/net/af_unix.h',
+    'sockaddr_un': '/include/uapi/linux/un.h', 'cpuinfo_x86': '/arch/x86/include/asm/processor.h',
     'radix_tree_node': '/include/linux/radix-tree.h',
     'tcp_seq_afinfo': '/include/net/tcp.h', 'udp_seq_afinfo': '/include/net/udp.h', 'hlist_head': '/include/linux/types.h',
     'upid': '/include/linux/pid.h', 'hlist_node': '/include/linux/types.h', 'rb_node': '/include/linux/rbtree.h',
@@ -103,12 +103,12 @@ file_name = {
 
 }
 all_accessed_object = [
-    'task_struct', 'list_head', 'timekeeper', 'pid_namespace', 'pid', 'file', 'dentry', 'qstr', 
-    'vfsmount', 'mount', 'inode', 'vm_area_struct', 'mm_struct', 'module', 'module_layout', 'seq_operations', 'tty_driver', 
-    'tty_struct', 'proc_dir_entry', 'file_operations', 'rb_root', 'file_system_type', 'kset', 'kobject', 
-    'module_kobject', 'kref', 'neigh_table', 'neigh_hash_table', 'neighbour', 'net_device', 'in_device', 'in_ifaddr', 
-    'socket', 'inet_sock', 'sock', 'ipv6_pinfo', 'unix_sock', 'sockaddr_un', 'cpuinfo_x86', 'resource', 
-    'radix_tree_node', 'files_struct', 'tcp_seq_afinfo', 'udp_seq_afinfo', 'hlist_head', 'upid', 'hlist_node', 
+    'task_struct', 'list_head', 'timekeeper', 'pid_namespace', 'pid', 'file', 'dentry', 'qstr',
+    'vfsmount', 'mount', 'inode', 'vm_area_struct', 'mm_struct', 'module', 'module_layout', 'seq_operations', 'tty_driver',
+    'tty_struct', 'proc_dir_entry', 'file_operations', 'rb_root', 'file_system_type', 'kset', 'kobject',
+    'module_kobject', 'kref', 'neigh_table', 'neigh_hash_table', 'neighbour', 'net_device', 'in_device', 'in_ifaddr',
+    'socket', 'inet_sock', 'sock', 'ipv6_pinfo', 'unix_sock', 'sockaddr_un', 'cpuinfo_x86', 'resource',
+    'radix_tree_node', 'files_struct', 'tcp_seq_afinfo', 'udp_seq_afinfo', 'hlist_head', 'upid', 'hlist_node',
     'rb_node', 'sock_common', 'unix_address', 'in6_addr', 'super_block', 'pid_link', 'fs_struct', 'tty_ldisc'
 ]
 key_end = {
@@ -146,49 +146,49 @@ key_end = {
     "vfsmount": "}"
 }
 tmp = [
-    'tasks', 'next', 'parent', 'cred', 'uid', 'val', 'gid', 'real_start_time', 'wall_to_monotonic', 'offs_real', 'offs_boot', 
-    'tv_sec', 'tv_nsec', 'mm', 'pgd', 'comm', 'arg_start', 'arg_end', 'euid', 'children', 'sibling', 'idr', 'idr_rt', 'xa_head', 
-    'shift', 'slots', 'first', 'pid_links', 'real_parent', 'group_leader', 'exit_state', 'files', 'fdt', 'fd', 'max_fds', 'f_path', 
-    'd_op', 'd_dname', 'fs', 'root', 'mnt', 'd_inode', 'd_name', 'name', 'mnt_root', 'd_parent', 'mnt_parent', 'mnt_mountpoint', 
-    'i_ino', 'mmap', 'vm_start', 'vm_end', 'vm_pgoff', 'mmap_base', 'vm_file', 'i_sb', 's_dev', 'vm_flags', 'vm_next', 'brk', 
-    'start_brk', 'start_stack', 'vm_mm', 'context', 'vdso', 'module', 'core_layout', 'base', 'size', 'list', 'tcp_seq_afinfo', 
-    'start', 'stop', 'show', 'ttys', 'num', 'tty_drivers', 'ldisc', 'ops', 'receive_buf', 'f_op', 'lock', 'iterate_shared', 
-    'iopoll', 'compat_ioctl', 'llseek', 'flush', 'flock', 'poll', 'open', 'fadvise', 'remap_file_range', 'write', 'read', 
-    'setlease', 'fasync', 'fallocate', 'sendpage', 'write_iter', 'read_iter', 'splice_read', 'show_fdinfo', 'iterate', 
-    'splice_write', 'copy_file_range', 'unlocked_ioctl', 'fsync', 'get_unmapped_area', 'release', 'check_flags', 'nsproxy', 
-    'pid_ns_for_children', 'proc_mnt', 'i_fop', 'd_child', 'd_subdirs', 'proc_fops', 'subdir_node', 'subdir', 'rb_node', 
-    'proc_net', 'mnt_hash', 'mnt_child', 'mnt_devname', 'mnt_list', 'mnt_sb', 's_type', 's_root', 'mnt_flags', 's_flags', 
-    'i_mode', 'latch_tree_root', 'state', 'text_size', 'kobject', 'mod', 'entry', 'refcount', 'refs', 'counter', 'nht', 
-    'hash_shift', 'hash_buckets', 'dev', 'ip_ptr', 'tbl', 'family', 'primary_key', 'ha', 'addr_len', 'dev_base_head', 
-    'perm_addr', 'dev_addr', 'flags', 'ifa_list', 'ifa_address', 'ifa_label', 'ifa_next', 'dev_list', 'sk', 'sk_protocol', 
-    '_task_struct__sk_common', 'skc_family', '_inet_sock__sk_common', 'pinet6', 'saddr', 'addr', 'sun_path', 'inet_sport', 
-    '__sk_common', 'skc_portpair', 'skc_rcv_saddr', 'skc_daddr', 'skc_state', 'skc_v6_daddr', 'x86_vendor_id', 'x86_model_id', 
-    'ts_nsec', 'len', 'text_len', 'child', 'end', 'mnt_ns', 'owner', 'radix_tree_root', 'rnode', 'pids', 'seq_fops', 
-    'dedupe_file_range', 'mmap_supported_flags', 'clone_file_range', 'seq_ops', 'tty_driver', 'rb_left', 'rb_right', 'namelen', 'kref', 
+    'tasks', 'next', 'parent', 'cred', 'uid', 'val', 'gid', 'real_start_time', 'wall_to_monotonic', 'offs_real', 'offs_boot',
+    'tv_sec', 'tv_nsec', 'mm', 'pgd', 'comm', 'arg_start', 'arg_end', 'euid', 'children', 'sibling', 'idr', 'idr_rt', 'xa_head',
+    'shift', 'slots', 'first', 'pid_links', 'real_parent', 'group_leader', 'exit_state', 'files', 'fdt', 'fd', 'max_fds', 'f_path',
+    'd_op', 'd_dname', 'fs', 'root', 'mnt', 'd_inode', 'd_name', 'name', 'mnt_root', 'd_parent', 'mnt_parent', 'mnt_mountpoint',
+    'i_ino', 'mmap', 'vm_start', 'vm_end', 'vm_pgoff', 'mmap_base', 'vm_file', 'i_sb', 's_dev', 'vm_flags', 'vm_next', 'brk',
+    'start_brk', 'start_stack', 'vm_mm', 'context', 'vdso', 'module', 'core_layout', 'base', 'size', 'list', 'tcp_seq_afinfo',
+    'start', 'stop', 'show', 'ttys', 'num', 'tty_drivers', 'ldisc', 'ops', 'receive_buf', 'f_op', 'lock', 'iterate_shared',
+    'iopoll', 'compat_ioctl', 'llseek', 'flush', 'flock', 'poll', 'open', 'fadvise', 'remap_file_range', 'write', 'read',
+    'setlease', 'fasync', 'fallocate', 'sendpage', 'write_iter', 'read_iter', 'splice_read', 'show_fdinfo', 'iterate',
+    'splice_write', 'copy_file_range', 'unlocked_ioctl', 'fsync', 'get_unmapped_area', 'release', 'check_flags', 'nsproxy',
+    'pid_ns_for_children', 'proc_mnt', 'i_fop', 'd_child', 'd_subdirs', 'proc_fops', 'subdir_node', 'subdir', 'rb_node',
+    'proc_net', 'mnt_hash', 'mnt_child', 'mnt_devname', 'mnt_list', 'mnt_sb', 's_type', 's_root', 'mnt_flags', 's_flags',
+    'i_mode', 'latch_tree_root', 'state', 'text_size', 'kobject', 'mod', 'entry', 'refcount', 'refs', 'counter', 'nht',
+    'hash_shift', 'hash_buckets', 'dev', 'ip_ptr', 'tbl', 'family', 'primary_key', 'ha', 'addr_len', 'dev_base_head',
+    'perm_addr', 'dev_addr', 'flags', 'ifa_list', 'ifa_address', 'ifa_label', 'ifa_next', 'dev_list', 'sk', 'sk_protocol',
+    '_task_struct__sk_common', 'skc_family', '_inet_sock__sk_common', 'pinet6', 'saddr', 'addr', 'sun_path', 'inet_sport',
+    '__sk_common', 'skc_portpair', 'skc_rcv_saddr', 'skc_daddr', 'skc_state', 'skc_v6_daddr', 'x86_vendor_id', 'x86_model_id',
+    'ts_nsec', 'len', 'text_len', 'child', 'end', 'mnt_ns', 'owner', 'radix_tree_root', 'rnode', 'pids', 'seq_fops',
+    'dedupe_file_range', 'mmap_supported_flags', 'clone_file_range', 'seq_ops', 'tty_driver', 'rb_left', 'rb_right', 'namelen', 'kref',
     'pid_link', 'numbers', 'hlist_node', 'pid_chain', 'pprev', 'net', 'setfl'
 ]
 
 all_accessed_field = [
-    'tasks', 'next', 'parent', 'uid', 'val', 'gid', 'real_start_time', 'wall_to_monotonic', 'offs_real', 'offs_boot', 
-    'tv_sec', 'tv_nsec', 'mm', 'pgd', 'comm', 'arg_start', 'arg_end', 'euid', 'children', 'sibling', 'idr', 'idr_rt', 'xa_head', 
-    'shift', 'slots', 'first', 'pid_links', 'real_parent', 'group_leader', 'exit_state', 'files', 'fdt', 'fd', 'max_fds', 'f_path', 
-    'd_op', 'd_dname', 'fs', 'root', 'mnt', 'd_inode', 'd_name', 'name', 'mnt_root', 'd_parent', 'mnt_parent', 'mnt_mountpoint', 
-    'i_ino', 'mmap', 'vm_start', 'vm_end', 'vm_pgoff', 'mmap_base', 'vm_file', 'i_sb', 's_dev', 'vm_flags', 'vm_next', 'brk', 
-    'start_brk', 'start_stack', 'vm_mm', 'context', 'vdso', 'module', 'core_layout', 'base', 'size', 'list', 'tcp_seq_afinfo', 
-    'start', 'stop', 'show', 'ttys', 'num', 'tty_drivers', 'ldisc', 'ops', 'receive_buf', 'f_op', 'lock', 'iterate_shared', 
-    'iopoll', 'compat_ioctl', 'llseek', 'flush', 'flock', 'poll', 'open', 'fadvise', 'remap_file_range', 'write', 'read', 
-    'setlease', 'fasync', 'fallocate', 'sendpage', 'write_iter', 'read_iter', 'splice_read', 'show_fdinfo', 'iterate', 'splice_write', 
-    'copy_file_range', 'unlocked_ioctl', 'fsync', 'get_unmapped_area', 'release', 'check_flags', 'nsproxy', 'pid_ns_for_children', 
-    'proc_mnt', 'i_fop', 'd_child', 'd_subdirs', 'proc_fops', 'subdir_node', 'subdir', 'rb_node', 'proc_net', 'mnt_hash', 'mnt_child', 
-    'mnt_devname', 'mnt_list', 'mnt_sb', 's_type', 's_root', 'mnt_flags', 's_flags', 'i_mode', 'latch_tree_root', 'state', 'text_size', 
-    'kobject', 'mod', 'entry', 'refcount', 'refs', 'counter', 'nht', 'hash_shift', 'hash_buckets', 'dev', 'ip_ptr', 'tbl', 'family', 
-    'primary_key', 'ha', 'addr_len', 'dev_base_head', 'perm_addr', 'dev_addr', 'flags', 'ifa_list', 'ifa_address', 'ifa_label', 'ifa_next', 
-    'dev_list', 'sk', 'sk_protocol', '_task_struct__sk_common', 'skc_family', '_inet_sock__sk_common', 'pinet6', 'saddr', 'addr', 
-    'sun_path', 'inet_sport', '__sk_common', 'skc_portpair', 'skc_rcv_saddr', 'skc_daddr', 'skc_state', 'skc_v6_daddr', 'x86_vendor_id', 
-    'x86_model_id', 'ts_nsec', 'len', 'text_len', 'child', 'end', 'mnt_ns', 'p_filINFO', 'owner', 'radix_tree_root', 'rnode', 'pids', 
-    'seq_fops', 'dedupe_file_range', 'mmap_supported_flags', 'clone_file_range', 'seq_ops', 'tty_driver', 'rb_left', 'rb_right', 'namelen', 
-    'pid_link', 'numbers', 'hlist_node', 'pid_chain', 'pprev', 'total_sleep_time', 'line', 'timestamp', 'init_size', 'core_size', 
-    'module_core', 'aio_read', 'aio_write', 'aio_fsync', 'd_u', 'core_text_size', 'tv64', 'init_layout', 'address', 'net', 'readdir', 
+    'tasks', 'next', 'parent', 'uid', 'val', 'gid', 'real_start_time', 'wall_to_monotonic', 'offs_real', 'offs_boot',
+    'tv_sec', 'tv_nsec', 'mm', 'pgd', 'comm', 'arg_start', 'arg_end', 'euid', 'children', 'sibling', 'idr', 'idr_rt', 'xa_head',
+    'shift', 'slots', 'first', 'pid_links', 'real_parent', 'group_leader', 'exit_state', 'files', 'fdt', 'fd', 'max_fds', 'f_path',
+    'd_op', 'd_dname', 'fs', 'root', 'mnt', 'd_inode', 'd_name', 'name', 'mnt_root', 'd_parent', 'mnt_parent', 'mnt_mountpoint',
+    'i_ino', 'mmap', 'vm_start', 'vm_end', 'vm_pgoff', 'mmap_base', 'vm_file', 'i_sb', 's_dev', 'vm_flags', 'vm_next', 'brk',
+    'start_brk', 'start_stack', 'vm_mm', 'context', 'vdso', 'module', 'core_layout', 'base', 'size', 'list', 'tcp_seq_afinfo',
+    'start', 'stop', 'show', 'ttys', 'num', 'tty_drivers', 'ldisc', 'ops', 'receive_buf', 'f_op', 'lock', 'iterate_shared',
+    'iopoll', 'compat_ioctl', 'llseek', 'flush', 'flock', 'poll', 'open', 'fadvise', 'remap_file_range', 'write', 'read',
+    'setlease', 'fasync', 'fallocate', 'sendpage', 'write_iter', 'read_iter', 'splice_read', 'show_fdinfo', 'iterate', 'splice_write',
+    'copy_file_range', 'unlocked_ioctl', 'fsync', 'get_unmapped_area', 'release', 'check_flags', 'nsproxy', 'pid_ns_for_children',
+    'proc_mnt', 'i_fop', 'd_child', 'd_subdirs', 'proc_fops', 'subdir_node', 'subdir', 'rb_node', 'proc_net', 'mnt_hash', 'mnt_child',
+    'mnt_devname', 'mnt_list', 'mnt_sb', 's_type', 's_root', 'mnt_flags', 's_flags', 'i_mode', 'latch_tree_root', 'state', 'text_size',
+    'kobject', 'mod', 'entry', 'refcount', 'refs', 'counter', 'nht', 'hash_shift', 'hash_buckets', 'dev', 'ip_ptr', 'tbl', 'family',
+    'primary_key', 'ha', 'addr_len', 'dev_base_head', 'perm_addr', 'dev_addr', 'flags', 'ifa_list', 'ifa_address', 'ifa_label', 'ifa_next',
+    'dev_list', 'sk', 'sk_protocol', '_task_struct__sk_common', 'skc_family', '_inet_sock__sk_common', 'pinet6', 'saddr', 'addr',
+    'sun_path', 'inet_sport', '__sk_common', 'skc_portpair', 'skc_rcv_saddr', 'skc_daddr', 'skc_state', 'skc_v6_daddr', 'x86_vendor_id',
+    'x86_model_id', 'ts_nsec', 'len', 'text_len', 'child', 'end', 'mnt_ns', 'p_filINFO', 'owner', 'radix_tree_root', 'rnode', 'pids',
+    'seq_fops', 'dedupe_file_range', 'mmap_supported_flags', 'clone_file_range', 'seq_ops', 'tty_driver', 'rb_left', 'rb_right', 'namelen',
+    'pid_link', 'numbers', 'hlist_node', 'pid_chain', 'pprev', 'total_sleep_time', 'line', 'timestamp', 'init_size', 'core_size',
+    'module_core', 'aio_read', 'aio_write', 'aio_fsync', 'd_u', 'core_text_size', 'tv64', 'init_layout', 'address', 'net', 'readdir',
     'pid_ns', 'vfsmount', 'chain', 'dst', 'rt_next', 'rt_dst', 'rt_gateway', 'inet_dport', 'daddr', 'setfl'
 ]
 
@@ -312,7 +312,7 @@ def process_file(struct_name):
                             for i in tmp_line[:first_field_idx]:
                                 new_line += str(i) + ' '
                             new_line += str(item.strip(','))
-                            
+
                             field_def, token = process_token(new_line)
                             ts_token.append(token)
                     else:
@@ -362,7 +362,7 @@ def process_token(line):
     #    if token[index] == '*':
     #        token[index+1] = '*' + token[index+1]
     #        del token[index]
-    
+
     if token[0].endswith('_t'):
         token[0] = 'int'
     if token[0] == 'u64':
@@ -496,7 +496,7 @@ def reverse_diff(struct_name):
                 current_object_name.remove(item)
             if item in next_object_name:
                 next_object_name.remove(item)
-        
+
         while not current_object_name == next_object_name:
             for index in range(len(current_object_name)):
                 if current_object_name[index] == next_object_name[index]:
@@ -528,7 +528,7 @@ def reverse_diff(struct_name):
                         if item[-1] not in changed_required_field:
                             changed_required_field.append(item[-1])
                     break
-        
+
         #Check pointer type change:
         '''
             If the field names are the same, compare their types
@@ -555,12 +555,12 @@ def reverse_diff(struct_name):
     if total_swap > 0:
         f.write("Total swap cnt: {0}, total swap distance: {1}, average swap distance: {2}\n".format(total_swap, total_swap_distance, 1.0*total_swap_distance/total_swap))
     f.close()
-        
+
     '''
     os.system("cp v4.11 result.h")
     for v in versions:
         file_name = v
-        cmd = "grep -F -x -f result.h " + file_name 
+        cmd = "grep -F -x -f result.h " + file_name
         print "diffing " + file_name
         result = commands.getstatusoutput(cmd)
         with open("result.h", "w") as output:
@@ -597,7 +597,7 @@ def check_swap(current_object, next_object):
                 del next_object[next_index]
                 return True, abs(next_index - current_index), current_object, next_object, swapped_field
     return False, None, None, None, None
-    
+
 def start_process(struct_name):
     cwd = os.getcwd()
     if not os.path.isdir("./"+struct_name):
@@ -607,7 +607,7 @@ def start_process(struct_name):
     process_file(struct_name)
     reverse_diff(struct_name)
     count_used_field(struct_name)
-    
+
     #find_config(struct_name)
     os.chdir(cwd)
     #for item in all_field_in_config:
@@ -644,7 +644,7 @@ def start_process_configs(struct_name, version):
     with open("/home/zhenxiao/linux_source/defconfig", 'w') as f:
         for item in content:
             f.write(item+'\n')
-    
+
     os.chdir(cwd)
 
 def main():

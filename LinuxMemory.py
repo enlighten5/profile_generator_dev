@@ -54,20 +54,20 @@ class AMD64PagedMemory():
         return not self.is_user_page(entry)
 
     def is_writeable(self, entry):
-        return entry & (1 << 1) == (1 << 1) 
-        
+        return entry & (1 << 1) == (1 << 1)
+
     def is_dirty(self, entry):
         return entry & (1 << 6) == (1 << 6)
-        
+
     def is_nx(self, entry):
         return entry & (1 << 63) == (1 << 63)
-        
+
     def is_accessed(self, entry):
         return entry & (1 << 5) == (1 << 5)
-        
+
     def is_copyonwrite(self, entry):
         return entry & (1 << 9) == (1 << 9)
-        
+
     def is_prototype(self, entry):
         return entry & (1 << 10) == (1 << 10)
 
@@ -106,7 +106,7 @@ class AMD64PagedMemory():
         "Bits 11:3 are bits 47:39 of the linear address" [Intel]
         "Bits 2:0 are 0" [Intel]
         '''
-        
+
         pml4e_paddr = (possible_dtb & 0xffffffffff000) | ((vaddr & 0xff8000000000) >> 36)
         #print "get_pml4e", hex(pml4e_paddr)
         return self.read_long_long_phys(pml4e_paddr)
@@ -187,7 +187,7 @@ class AMD64PagedMemory():
                 if self.entry_present(pte):
                     retVal = self.get_paddr(vaddr, pte)
         return retVal
-    
+
     def maybe_vtop(self, vaddr, possible_dtb):
         '''
         This method translates an address in the virtual
@@ -221,7 +221,7 @@ class AMD64PagedMemory():
     def is_user_pointer(self, buf, idx):
         dest = (ord(buf[idx+7]) << 56) + (ord(buf[idx+6]) << 48) + (ord(buf[idx+5]) << 40) + (ord(buf[idx+4]) << 32) + (ord(buf[idx+3]) << 24) + (ord(buf[idx+2]) << 16) + (ord(buf[idx+1]) << 8) + ord(buf[idx])
         return dest
-    
+
 
     def read_long_long_phys(self, addr):
         '''
@@ -240,7 +240,7 @@ class AMD64PagedMemory():
             return None
         longlongval, = struct.unpack("<Q", string)
         return longlongval
-    
+
     def get_page_info(self, addr, length):
         info = {}
         idx = 0
@@ -297,7 +297,7 @@ class AMD64PagedMemory():
                     continue
 
                 if self.page_size_flag(pdpte_value):
-                    if with_pte: 
+                    if with_pte:
                         yield (pdpte_value, vaddr, 0x40000000)
                     else:
                         yield (vaddr, 0x40000000)
@@ -317,13 +317,13 @@ class AMD64PagedMemory():
                     soffset = (j * 0x200 * 0x200 * 8)
 
                     entry = pd_entries[j]
-                    
+
                     if self.skip_duplicate_entries and entry == prev_pd_entry:
                         continue
                     prev_pd_entry = entry
                     if self.entry_present(entry) and self.page_size_flag(entry):
                         #print "entry1", hex(entry)
-                        if with_pte: 
+                        if with_pte:
                             yield (entry, vaddr + soffset, 0x200000)
                         else:
                             yield (vaddr + soffset, 0x200000)
@@ -377,7 +377,7 @@ class AMD64PagedMemory():
                 if len(bin(key)) > 32 or len(bin(key)) < 25:
                     continue
                 #print bin(key), hex(key), hex(start_addr+step)
-            
+
             for pml4e in range(0, 0x200):
                 pml4e_value = pml4_entries[pml4e]
                 if not self.entry_present(pml4e_value):
@@ -417,7 +417,7 @@ class AMD64PagedMemory():
                         soffset = (j * 0x200 * 0x200 * 8)
 
                         entry = pd_entries[j]
-                        
+
                         if self.skip_duplicate_entries and entry == prev_pd_entry:
                             continue
                         prev_pd_entry = entry
@@ -445,12 +445,12 @@ class AMD64PagedMemory():
                 if not hex(start_addr+step) in pml_enrty:
                     pml_enrty.append(hex(start_addr+step))
             step += 0x200 * 8
-        
+
         pml_enrty.sort()
         pml_enrty2.sort()
         #print len(pml_enrty), len(pml_enrty2)
         return pml_enrty2
-        
+
     @classmethod
     def address_mask(cls, addr):
         return addr & 0xffffffffffff
@@ -575,7 +575,7 @@ class ArmAddressSpace():
                 return None
 
     def vtop(self, vaddr):
-        # Volatility only support ARM 32 bit. 
+        # Volatility only support ARM 32 bit.
         if vaddr & 0xffff800000000000 == 0xffff800000000000:
             paddr = vaddr - 0xffff800000000000 + 0x830
             return paddr
